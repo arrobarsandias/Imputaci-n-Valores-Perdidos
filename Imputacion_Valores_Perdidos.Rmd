@@ -1,0 +1,262 @@
+---
+title: Estudio de la Recuperación de un Análisis Factorial Confirmatorio sobre una
+  matriz de varianzas y covarianzas cuyos datos presentaban valores perdidos
+author: "Alicia Gil Matute"
+date: "2024-06-02"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## INTRODUCCIÓN
+
+El análisis factorial confirmatorio (AFC) es la técnica estadística mediante la cual podemos establecer la estructura subyacente de una serie de variables observadas y así poder medir y usar variables no observables. Dicha técnica utiliza la matriz de varianzas y covarianzas para evaluar si los datos ajustan al modelo teórico, así que para realizar un AFC sobre unos datos, podemos introducir como input los datos en bruto o directamente la matriz de varianzas y covarianzas.
+
+Sin embargo, si en nuestra base de datos existen valores perdidos, el software con el cual vayamos a trabajar va a utilizar alguna estrategia para poder realizar los cálculos sin estos valores perdidos (la más común es "eliminación por lista"). Esto provoca que nuestros análisis no estén utilizando todas las observaciones recogidas, sino muchas menos. Por ello existen estrategias modernas para no desechar tantos casos, como la imputación múltiple o la imputación por máxima verosimilitud.
+
+Este trabajo pretende poner a prueba la estrategia de imputación múltiple para realizar un AFC el cual recibe como input una matriz de varianzas y covarianzas calculada sobre una base de datos. Una base de datos sobre la que se han simulado valores perdidos MCAR y se han imputado mediante dicha estrategia. Queremos estudiar como recupera los parametros estimados de un AFC y sus indices de ajuste y compararlo con el modelo AFC que recibe como input la matriz de varianzas y covarianzas sin simular valores perdidos.
+
+## OBJETIVOS E HIPÓTESIS
+
+El objetivo de este trabajo es el estudio de la recuperación de los parámetros estimados y los índices de ajuste de un modelo AFC que recibe como input una matriz de varianzas y covarianzas de unos datos imputados. De este manera se podrá comprobar si el método de imputación múltiple es recomendable para emplearse en modelos AFC.
+
+Nuestra hipótesis vaticina que las estimaciones y los índices de ajuste del modelo AFC imputado son muy similares a los del modelo AFC sin imputar.
+
+## MÉTODO
+
+La base de datos empleada es la llamada "Liderazgo.sav" donde se incluyen 15 variables de las cuales 13 son ítems que miden 3 factores relacionados con el liderazgo, pero de los cuales solo 11 forman parte de la estructura factorial (los items 3 y 9 no forman parte de la estructura factorial, como se puede ver en la imagen). Los ítems están medidos en una escala Likert con valores 1-7. El tamaño de la muestra es de 96 sujetos y todos los análisis se han realizado con el software R.
+
+![](Estructura_AFC.png){width="343"}
+
+En primer lugar, se cargan los archivos y se eliminan de la base de datos los ítems 3 y 9 que no forman parte de la estructura, y 2 variables que servían a otros objetivos del estudio. Después se calcula la matriz de varianzas y covarianzas de los datos originales que utilizaremos después para extraer la matriz residual y tener una primera impresión de sí se ha realizado bien o no la imputación múltiple.
+
+En segundo lugar, simulamos valores perdidos MCAR en el 40% de la muestra en todos los ítems y empleamos la librería mice para realizar la imputación múltiple. Se imputan 20 bases de datos mediante el método "pmm" (predictive mean matching) y después, mediante un bucle for() se realizan las matrices de varianzas y covarianzas de cada una de las 20 bases de datos imputadas.A continuación, calculamos la matriz promedio de esas 20 matrices de varianzas y covarianzas.
+
+En tercer lugar, especificamos el modelo de AFC que se ha presentado en la imagen e introducimos como input esa matriz promedio e indicamos que el método de estimación sea máxima verosimilitud ("ML"). Indicamos también que imprima los índices de ajuste.
+
+Por último, calculamos el modelo AFC con los datos originales (sin valores perdidos) pero introduciendo también como input la matriz de varianzas y covarianzas.
+
+## RESULTADOS
+
+### Índices de Ajuste AFC imputado VS Índices de Ajuste AFC original
+
+```{r}
+
+### Usando `gridExtra` en RMarkdown
+
+library(gridExtra)
+library(png)
+library(grid)
+
+# Leer las imágenes
+img1 <- readPNG("ajuste_imp.png")
+img2 <- readPNG("ajuste_raw.png")
+
+# Convertir las imágenes a objetos grid
+g1 <- rasterGrob(img1, interpolate=TRUE)
+g2 <- rasterGrob(img2, interpolate=TRUE)
+
+# Mostrar las imágenes lado a lado
+grid.arrange(g1, g2, ncol=2)
+
+```
+
+Como podemos observar, el valor del estadístico de chi-cuadrado resulta significativo en ambso modelos lo que signfica que el modelo propuesto ajusta a los datos, pero con valores de chi-cuadrado diferentes, en el modelo de AFC imputado se obtiene un valor de chi-cuadrado de 172.399 y en el modelo de AFC original un chi-cuadrado de 80.412. Igualmente, estan empleando la misma cantidad de información porque ambos están empleando 41 grados de libertad. Por otro lado, el índice de RMSEA que también evalua el ajuste del modelo a los datos resulta mayor a 0.05 en ambos modelos, con lo cual recibimos información contradictoria. Como el estadístico chi-cuadrado es tan sensible a la muestra, RMSEA resulta ser un índice más robusto con lo cual, basandonos en él, tanto el modelo AFC imputado como el modelo AFC original tiene un mal ajuste a los datos. Está cuestión, se comentará en los siguientes apartados.
+
+Respecto a los índices TLI y CFI hay diferencias más claras entre ambos modelos. Mientras que en modelo AFC imputado los valores estimados de TLI como CFI no superan el 0.95, en el modelo de AFC original sí son más próximos a 0.95. Con lo cual, el modelo AFC imputado recupera mal la mejora del ajuste respecto al modelo nulo.
+
+### Estimaciones de parámetros modelo AFC imputado VS estimaciones de parámetros modelo AFC original
+
+```{r}
+
+# Leer las imágenes
+img1 <- readPNG("estimaciones_imp.png")
+img2 <- readPNG("estimaciones_raw.png")
+
+# Convertir las imágenes a objetos grid
+g1 <- rasterGrob(img1, interpolate=TRUE, width=unit(8, "cm"), height=unit(9, "cm"))
+g2 <- rasterGrob(img2, interpolate=TRUE, width=unit(8, "cm"), height=unit(9, "cm"))
+
+# Mostrar las imágenes lado a lado
+grid.arrange(g1, g2, ncol=2)
+
+```
+
+## CONCLUSIONES
+
+Antes de comentar los resultados es importante aclarar lo siguiente: este trabajo no pretende evaluar el ajuste del modelo AFC original ni mejorarlo, y mucho menos pretendemos que el modelo AFC imputado supere en ajuste al modelo original, es imposible dado que solo podemos aspirar a que se parezca al ajuste original. Si el modelo AFC original tiene un ajuste mediocre (como es el caso) el ajuste del modelo imputado, por mucho que pueda parecerse al original, será igual de mediocre. Y lo mismo ocurre con los valores estimados para los pesos factoriales, si el modelo original tiene problemas obtendremos pesos factoriales mayores a 1, también los obtendrá el modelo imputado. Así que, lo que nos interesa evaluar dados los objetivos del estudio es como el modelo AFC imputado se parece al modelo AFC original, y no si alcanza un buen ajuste o pesos factoriales adecuados, porque el modelo AFC original no los alcanza.
+
+Por lo general podemos concluir que el método de imputación múltiple es eficaz porque recupera con bastante robusted el modelo AFC original introduciendo como input la matriz de varianzas y covarianzas. Los índices de ajuste, aunque en concreto TLI y CFI son los que más difieren (en el modelo AFC imputado interpretamos que no ajusta y en el modelo AFC original sí) no son valores muy dispares entre modelos y en términos muy generales, tienen un ajuste muy similar. Finalmente, respecto a los valores de los pesos factoriales y de las covarianzas entre factores, aunque puedan no coincidir, son diferencias mínimas y se llegan a las mismas interpretaciones.
+
+Por último, aunque no hayamos podido identificar el problema que puede subyacer al modelo AFC original para obtener unos índices de ajuste bastante mejorables y unos pesos factoriales superiores a 1, nuestra sospecha es que se debe al tamaño muestral. El tamaño muestral del estudio es de 96 sujetos y la literatura recomienda emplear muestras de 300 sujetos (200 mínimo) para realizar Análisis Factoriales Confirmatorios robustos. Por ello, nuestra recomendación para futuros estudios es que se recoja un tamaño muestral adecuado, pero no excesivamente grande dado que chi-cuadrado es sensible al tamaño muestral.
+
+## ANEXO
+
+*"Script de R"*
+
+```{r}
+rm(list=ls())
+
+set.seed(123)
+
+library(haven)
+library(mice)
+library(reshape2) 
+library(mitml)
+library(lme4)
+library(lavaan)
+library(semPlot)
+library(psych)
+
+
+datos <- read_sav("Liderazgo.sav")
+View(datos)
+
+table(is.na(datos))
+
+#obtenemos la matriz de var-cov de los datos  brutos para chequear luego como recupera la matriz la imputación múltiple obteniendo la matriz residual
+
+datos <- datos[,-c(14,15,3,9)] #quitamos las variables de los factores y de los ítems que no forman parte del modelo CFA
+
+raw_m <- cov(datos)
+raw_m
+
+
+#Simulamos valores NA al 40% (MCAR)
+
+datos_NA <- datos
+
+table(is.na(datos_NA))
+
+# Proporción de valores perdidos a introducir (puedes ajustar según tus necesidades)
+proporcion_NA<- 0.4
+
+# Obtener el número de filas y columnas en tus datos
+num_filas <- nrow(datos_NA)
+num_columnas <- ncol(datos_NA)
+
+# Calcular el número total de valores a introducir como perdidos
+num_NA <- round(proporcion_NA* num_filas * num_columnas)
+
+# Generar ubicaciones aleatorias para los valores perdidos
+ubicaciones_NA <- data.frame(
+  fila = sample(1:num_filas, num_NA, replace = TRUE),
+  columna = sample(1:num_columnas, num_NA, replace = TRUE)
+)
+
+# Introducir valores perdidos en las ubicaciones generadas
+for (i in 1:num_NA) {
+  datos_NA[ubicaciones_NA$fila[i], ubicaciones_NA$columna[i]] <- NA
+}
+
+
+table(is.na(datos_NA))
+
+
+write.csv(datos_NA,"liderazgo_NA.txt")
+
+View(datos_NA)
+
+str(datos_NA)
+
+
+#imputamos datos
+
+imp <- mice(datos_NA, seed = 20000, meth = "pmm", m = 20)
+imp$imp$p1  # Imputación del primer item en las 20 bases de datos
+
+complete_data <- complete(imp, 1)  # Imputación de la base de datos 1, los 13 items
+
+matrices <- list()
+
+for (i in 1:20) {
+  data <- complete(imp, action = i)
+  cov_matrix <- cov(data)
+  matrices[[i]] <- cov_matrix
+}
+
+head(matrices)
+
+# Ahora promedio las matrices de covarianza
+average_cov_matrix <- Reduce(`+`, matrices) / length(matrices)
+
+
+################Recuperación de la matriz (matriz residual)###################
+
+#raw_m[upper.tri(raw_m)] <- 0
+#raw_m
+
+#average_cov_matrix[upper.tri(average_cov_matrix)] <- 0
+#average_cov_matrix
+
+#m_dif <- raw_m-average_cov_matrix  #(residuos muy bajos,la imputacion recupera bien)
+#m_dif
+###############################################################################
+
+
+
+# Definiendo el modelo de CFA
+
+modelo <- '
+  
+  factor1 =~ p1 + p2 + p8 + p5 + p12
+  factor2 =~ p4 + p7 + p10 + p11
+  factor3 =~ p6 + p13
+  
+  factor1 ~~ factor2
+  factor1 ~~ factor3
+  factor2 ~~ factor3
+'
+
+# Realizando el CFA con la matriz de covarianza promediada
+
+afc <- cfa(modelo, sample.cov = average_cov_matrix, sample.nobs = 96, std.lv = TRUE, meanstructure = TRUE, estimator = "ML")
+
+summary(afc, standardized=TRUE, fit.measures=TRUE)
+coef(afc)
+
+semPaths(afc,"std",edge.label.cex=0.5, curvePivot = TRUE)
+
+
+############## Realizamos también el CFA con los datos brutos (sin simular datos MCAR) e introduciendo como input la matriz de varianzas-covarianzas##################
+
+
+raw_datos <- read_sav("Liderazgo.sav")
+str(raw_datos)
+
+#eliminamos variables innecesarias y las que no estan incluidas en el modelo
+
+raw_datos <- raw_datos[,-c(14,15,3,9)]
+
+head(raw_datos)
+
+matriz <- cov(raw_datos)
+
+matriz
+
+
+#CFA 
+
+raw_modelo <- '
+
+  factor1=~p1+p2+p8+p5+p12
+  factor2=~p4+p7+p10+p11
+  factor3=~p6+p13
+  
+  factor1~~factor2
+  factor1~~factor3
+  factor2~~factor3
+
+'
+
+
+raw_afc <- cfa(raw_modelo, sample.cov = matriz, sample.nobs = 96, std.lv = TRUE, meanstructure = TRUE, estimator = "ML")
+
+summary(raw_afc, standardized=TRUE, fit.measures=TRUE)
+coef(raw_afc)
+
+semPaths(raw_afc,"std",edge.label.cex=0.5, curvePivot = TRUE)
+
+```
