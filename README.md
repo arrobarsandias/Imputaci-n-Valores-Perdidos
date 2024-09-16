@@ -1,6 +1,4 @@
-# Estudio de la Recuperación de un Análisis Factorial Confirmatorio
-# sobre una matriz de varianzas y covarianzas cuyos datos
-# presentaban valores perdidos
+# Estudio de la Recuperación de un Análisis Factorial Confirmatorio sobre una matriz de varianzas y covarianzas cuyos datos presentaban valores perdidos
 
 Este repositorio contiene:
 - El modelo de Liderazgo de Frutos (1998). (Archivo: "Liderazgo_Frutos.pdf")
